@@ -8,7 +8,7 @@ class ReactiveEffect {
   run() {
     //执行effect传入函数的内容
     activeEffect = this;
-    this._fn();
+    return this._fn();
   }
 }
 
@@ -45,4 +45,5 @@ let activeEffect;
 export const effect = function (fn) {
   const _effect = new ReactiveEffect(fn);
   _effect.run();
+  return _effect.run.bind(_effect);
 };

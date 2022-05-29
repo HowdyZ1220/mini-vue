@@ -17,4 +17,17 @@ describe("effect", () => {
     user.age++;
     expect(nextAge).toBe(20);
   });
+
+  it("", () => {
+    // 执行effect返回一个runner 执行runner 返回fn的返回值
+    let num = 10;
+    let runner = effect(() => {
+      num++;
+      return "foo";
+    });
+    expect(num).toBe(11);
+    runner();
+    expect(num).toBe(12);
+    expect(runner()).toBe("foo");
+  });
 });
