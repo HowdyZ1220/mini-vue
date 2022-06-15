@@ -1,8 +1,9 @@
 //创建一个类 相当于面向对象思想 不允许fn改动
 class ReactiveEffect {
   private _fn: any;
-  constructor(fn) {
+  constructor(fn, public scheduler?) {
     this._fn = fn;
+    this.scheduler = scheduler;
   }
 
   run() {
@@ -37,13 +38,20 @@ export function trigger(target, key) {
   let dep = depsMap.get(key);
   //遍历dep的元素，并逐个调用
   for (const effect of dep) {
-    effect.run();
+    if (effect.scheduler) {
+      effect.scheduler();
+    } else {
+      effect.run();
+    }
   }
 }
-
+type effectOption = {
+  scheduler?: Function;
+};
 let activeEffect;
-export const effect = function (fn) {
-  const _effect = new ReactiveEffect(fn);
+export const effect = function (fn, option: effectOption = {}) {
+  const scheduler = option?.scheduler;
+  const _effect = new ReactiveEffect(fn, scheduler);
   _effect.run();
   return _effect.run.bind(_effect);
 };
