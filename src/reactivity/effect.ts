@@ -1,6 +1,11 @@
+import { extend } from "./shared";
+
 //创建一个类 相当于面向对象思想 不允许fn改动
 class ReactiveEffect {
   private _fn: any;
+  deps = [];
+  active = true;
+  public onStop: Function | undefined;
   constructor(fn, public scheduler?) {
     this._fn = fn;
     this.scheduler = scheduler;
@@ -11,19 +16,33 @@ class ReactiveEffect {
     activeEffect = this;
     return this._fn();
   }
+
+  stop() {
+    if (this.active) {
+      clearupEffect(this);
+      this.active = false;
+      if (this.onStop) {
+        this.onStop();
+      }
+    }
+  }
 }
 
+//清楚对应key改变后所需调用的单个函数
+function clearupEffect(effect) {
+  effect.deps.forEach((dep) => dep.delete(effect));
+}
 //创建一个保存多个对象的容器
 //收集依赖
 const targetMap = new Map();
 export function track(target, key) {
-  //key为可响应式对象，value为map格式的对象
+  //key为可响应式对象，value为map格式的对象 depsMap里面保存着这个响应式对象的key：[要更新的函数]
   let depsMap = targetMap.get(target);
   if (!depsMap) {
     depsMap = new Map();
     targetMap.set(target, depsMap);
   }
-  //创建对象中key的dep
+  //创建对象中key的dep, dep里面保存着更改key值后需要更新的函数
   let dep = depsMap.get(key);
   if (!dep) {
     dep = new Set();
@@ -31,6 +50,7 @@ export function track(target, key) {
   }
 
   dep.add(activeEffect);
+  activeEffect.deps.push(dep);
 }
 
 export function trigger(target, key) {
@@ -45,13 +65,27 @@ export function trigger(target, key) {
     }
   }
 }
+
 type effectOption = {
   scheduler?: Function;
+  onStop?: Function;
 };
+
 let activeEffect;
-export const effect = function (fn, option: effectOption = {}) {
-  const scheduler = option?.scheduler;
+
+export const effect = function (fn, options: effectOption = {}) {
+  const scheduler = options?.scheduler;
   const _effect = new ReactiveEffect(fn, scheduler);
+  // Object.assign(_effect, options);
+  extend(_effect, options);
   _effect.run();
-  return _effect.run.bind(_effect);
+
+  const runner: any = _effect.run.bind(_effect);
+  //在runner里面绑定_effect是为了通过下面的stop函数拿到可响应式对象的实例
+  runner.effect = _effect;
+  return runner;
 };
+
+export function stop(runner) {
+  runner.effect.stop();
+}
