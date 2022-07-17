@@ -1,5 +1,8 @@
 import { extend } from "./shared";
 
+let activeEffect;
+let shouldTrack;
+
 //创建一个类 相当于面向对象思想 不允许fn改动
 class ReactiveEffect {
   private _fn: any;
@@ -12,9 +15,17 @@ class ReactiveEffect {
   }
 
   run() {
-    //执行effect传入函数的内容
     activeEffect = this;
-    return this._fn();
+    if (!this.active) {
+      return this._fn();
+    }
+    shouldTrack = true;
+
+    let result = this._fn();
+    shouldTrack = false;
+    //执行effect传入函数的内容
+
+    return result;
   }
 
   stop() {
@@ -31,6 +42,7 @@ class ReactiveEffect {
 //清楚对应key改变后所需调用的单个函数
 function clearupEffect(effect) {
   effect.deps.forEach((dep) => dep.delete(effect));
+  effect.deps.length = 0;
 }
 //创建一个保存多个对象的容器
 //收集依赖
@@ -48,7 +60,8 @@ export function track(target, key) {
     dep = new Set();
     depsMap.set(key, dep);
   }
-
+  if (!activeEffect) return;
+  if (!shouldTrack) return;
   dep.add(activeEffect);
   activeEffect.deps.push(dep);
 }
@@ -70,8 +83,6 @@ type effectOption = {
   scheduler?: Function;
   onStop?: Function;
 };
-
-let activeEffect;
 
 export const effect = function (fn, options: effectOption = {}) {
   const scheduler = options?.scheduler;
