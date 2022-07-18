@@ -60,15 +60,31 @@ export function track(target, key) {
     dep = new Set();
     depsMap.set(key, dep);
   }
-  if (!activeEffect) return;
-  if (!shouldTrack) return;
+  if (!isTracking()) {
+    return;
+  }
+  tarckEffects(dep);
+}
+//依赖收集
+export const tarckEffects = (dep) => {
+  if (dep.has(activeEffect)) {
+    return;
+  }
   dep.add(activeEffect);
   activeEffect.deps.push(dep);
-}
+};
+
+export const isTracking = function () {
+  return shouldTrack && activeEffect !== undefined;
+};
 
 export function trigger(target, key) {
   let depsMap = targetMap.get(target);
   let dep = depsMap.get(key);
+  triggerEffects(dep);
+}
+
+export const triggerEffects = (dep) => {
   //遍历dep的元素，并逐个调用
   for (const effect of dep) {
     if (effect.scheduler) {
@@ -77,7 +93,7 @@ export function trigger(target, key) {
       effect.run();
     }
   }
-}
+};
 
 type effectOption = {
   scheduler?: Function;
